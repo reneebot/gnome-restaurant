@@ -81,9 +81,9 @@ public class GnomeRestaurantPlugin extends Plugin
 {
 	private static final Pattern DELIVERY_START_PATTERN = Pattern.compile("([\\w .]+) wants (?:some|a) ([\\w ]+)");
 
-	private static final String EASY_DELIVERY_DELAY_TEXT = "Fine, your loss. If you want another easy job one come " +
+	private static final String EASY_DELIVERY_CANCEL_TEXT = "Fine, your loss. If you want another easy job one come " +
 		"back in five minutes and maybe I'll be able to find you one.";
-	private static final String HARD_DELIVERY_DELAY_TEXT = "Fine, your loss. I may have an easier job for you, since" +
+	private static final String HARD_DELIVERY_CANCEL_TEXT = "Fine, your loss. I may have an easier job for you, since" +
 		" you chickened out of that one, If you want another hard one come back in five minutes and maybe I'll be" +
 		" able to find you a something.";
 
@@ -585,12 +585,18 @@ public class GnomeRestaurantPlugin extends Plugin
 
 		// Show delay timer if player refuses the order
 
-		if (config.showDelayTimer() && delayTimer == null && (dialog.contains(EASY_DELIVERY_DELAY_TEXT) || dialog.contains(HARD_DELIVERY_DELAY_TEXT)))
+		// TODO: refactor?
+		if (config.showDelayTimer() && delayTimer == null && (dialog.contains(EASY_DELIVERY_CANCEL_TEXT) || dialog.contains(HARD_DELIVERY_CANCEL_TEXT)))
 		{
-			delayTimer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
-			delayTimer.setTooltip("Cannot place an order at this time");
-			infoBoxManager.addInfoBox(delayTimer);
+			addDelayTimer();
 		}
+	}
+
+	private void addDelayTimer()
+	{
+		delayTimer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
+		delayTimer.setTooltip("Cannot place an order at this time");
+		infoBoxManager.addInfoBox(delayTimer);
 	}
 
 	private void startTrackingDelivery(String printedRecipientName, String orderName)
