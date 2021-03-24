@@ -559,36 +559,37 @@ public class GnomeRestaurantPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		if (client.getWidget(WidgetInfo.DIALOG_NPC_NAME) != null
-			&& client.getWidget(WidgetInfo.DIALOG_NPC_NAME).getText().equals("Gianne jnr.")
-		)
+		boolean isDialogueOpen = client.getWidget(WidgetInfo.DIALOG_NPC_NAME) != null;
+		if (!isDialogueOpen)
+			return;
+
+		boolean isTalkingToGianneJnr = client.getWidget(WidgetInfo.DIALOG_NPC_NAME).getText().equals("Gianne jnr.");
+		if (!isTalkingToGianneJnr)
+			return;
+
+		String dialog = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT).getText();
+
+		dialog = dialog.replace("<br>", " ");
+		Matcher matcher = DELIVERY_START_PATTERN.matcher(dialog);
+
+		// TODO: use different flag?
+		if (matcher.find() && !isTrackingDelivery)
 		{
-			String dialog = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT).getText();
+			startTrackingDelivery(matcher.group(1), matcher.group(2));
+		}
 
-			// Replace line breaks with spaces
+		if (isDeliveryForTesting)
+		{
+			resetPluginAndTest("Starting real delivery");
+		}
 
-			dialog = dialog.replace("<br>", " ");
+		// Show delay timer if player refuses the order
 
-			Matcher deliveryStartMatcher = DELIVERY_START_PATTERN.matcher(dialog);
-
-			if (isDeliveryForTesting)
-			{
-				resetPluginAndTest("Starting real delivery");
-			}
-
-			if (deliveryStartMatcher.find() && !isTrackingDelivery)
-			{
-				startTrackingDelivery(deliveryStartMatcher.group(1), deliveryStartMatcher.group(2));
-			}
-
-			// Show delay timer if player refuses the order
-
-			if (config.showDelayTimer() && delayTimer == null && (dialog.contains(EASY_DELIVERY_DELAY_TEXT) || dialog.contains(HARD_DELIVERY_DELAY_TEXT)))
-			{
-				delayTimer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
-				delayTimer.setTooltip("Cannot place an order at this time");
-				infoBoxManager.addInfoBox(delayTimer);
-			}
+		if (config.showDelayTimer() && delayTimer == null && (dialog.contains(EASY_DELIVERY_DELAY_TEXT) || dialog.contains(HARD_DELIVERY_DELAY_TEXT)))
+		{
+			delayTimer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
+			delayTimer.setTooltip("Cannot place an order at this time");
+			infoBoxManager.addInfoBox(delayTimer);
 		}
 	}
 
