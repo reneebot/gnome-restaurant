@@ -87,11 +87,13 @@ public class GnomeRestaurantPlugin extends Plugin
 
 	// NPC printed and actual names
 
+	// NPC names used by Gianne jnr
+	// Mapped to in-game names
 	private static final HashMap<String, String> easyOrderNPCs = new HashMap<String, String>()
 	{
 		{
 			put("Burkor", null);
-			put("Brimstall", null);
+			put("Brimstail", null);
 			put("Captain Errdo", null);
 			put("Coach", "Gnome Coach");
 			put("Dalila", null);
