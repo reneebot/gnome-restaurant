@@ -79,13 +79,13 @@ import net.runelite.client.ui.overlay.infobox.Timer;
 )
 public class GnomeRestaurantPlugin extends Plugin
 {
-	private static final Pattern DELIVERY_START_PATTERN =
-		Pattern.compile("([\\w .]+) wants (?:some|a) ([\\w ]+)");
+	private static final Pattern DELIVERY_START_PATTERN = Pattern.compile("([\\w .]+) wants (?:some|a) ([\\w ]+)");
 
-	private static final String EASY_DELIVERY_DELAY_TEXT = "Fine, your loss. If you want another easy job one come back in five minutes and maybe I'll be able to find you one.";
-	private static final String HARD_DELIVERY_DELAY_TEXT = "Fine, your loss. I may have an easier job for you, since you chickened out of that one, If you want another hard one come back in five minutes and maybe I'll be able to find you a something.";
-
-	// NPC printed and actual names
+	private static final String EASY_DELIVERY_DELAY_TEXT = "Fine, your loss. If you want another easy job one come " +
+		"back in five minutes and maybe I'll be able to find you one.";
+	private static final String HARD_DELIVERY_DELAY_TEXT = "Fine, your loss. I may have an easier job for you, since" +
+		" you chickened out of that one, If you want another hard one come back in five minutes and maybe I'll be" +
+		" able to find you a something.";
 
 	// NPC names used by Gianne jnr
 	// Mapped to in-game names
