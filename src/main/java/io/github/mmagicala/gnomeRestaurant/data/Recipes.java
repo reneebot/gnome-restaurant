@@ -55,10 +55,10 @@ public class Recipes
 				{
 					{
 						add(new Ingredient(ItemID.TOADS_LEGS, 4));
-						add(new Ingredient(ItemID.GNOME_SPICE, 2));
-						add(new Ingredient(ItemID.CHEESE, 1));
+						add(new Ingredient(ItemID.GNOME_SPICE, 1));
+						add(new Ingredient(ItemID.CHEESE, 2));
 						add(new Ingredient(ItemID.DWELLBERRIES, 1));
-						add(new Ingredient(ItemID.EQUA_LEAVES, 1));
+						add(new Ingredient(ItemID.EQUA_LEAVES, 2));
 					}
 				},
 				ItemID.HALF_MADE_BOWL,
@@ -71,7 +71,7 @@ public class Recipes
 				{
 					{
 						add(new Ingredient(ItemID.CHOCOLATE_BAR, 4));
-						add(new Ingredient(ItemID.EQUA_LEAVES, 2));
+						add(new Ingredient(ItemID.EQUA_LEAVES, 1));
 					}
 				},
 				ItemID.HALF_MADE_BOWL_9563,
@@ -110,7 +110,7 @@ public class Recipes
 				new ArrayList<Ingredient>()
 				{
 					{
-						add(new Ingredient(ItemID.EQUA_LEAVES, 4));
+						add(new Ingredient(ItemID.EQUA_LEAVES, 1));
 						add(new Ingredient(ItemID.GNOME_SPICE, 1));
 						add(new Ingredient(ItemID.CHEESE, 1));
 						add(new Ingredient(ItemID.TOADS_LEGS, 1));
