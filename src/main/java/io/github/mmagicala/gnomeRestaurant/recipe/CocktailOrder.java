@@ -24,27 +24,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package io.github.mmagicala.gnomeRestaurant;
+package io.github.mmagicala.gnomeRestaurant.recipe;
 
+import io.github.mmagicala.gnomeRestaurant.Ingredient;
+import io.github.mmagicala.gnomeRestaurant.BakedRecipeType;
+import java.util.ArrayList;
 import lombok.Getter;
-import lombok.Setter;
 
-public class OverlayEntry
+public class CocktailOrder extends Recipe
 {
 	@Getter
-	private String itemName;
+	private int shakerMixId;
 
-	@Getter
-	@Setter
-	private int inventoryCount;
-
-	@Getter
-	private int requiredCount;
-
-	public OverlayEntry(String itemName, int inventoryCount, int requiredCount)
+	public CocktailOrder(int shakerMixId, int itemId, ArrayList<Ingredient> ingredients)
 	{
-		this.itemName = itemName;
-		this.inventoryCount = inventoryCount;
-		this.requiredCount = requiredCount;
+		super(BakedRecipeType.COCKTAIL, itemId, ingredients);
+		this.shakerMixId = shakerMixId;
 	}
 }

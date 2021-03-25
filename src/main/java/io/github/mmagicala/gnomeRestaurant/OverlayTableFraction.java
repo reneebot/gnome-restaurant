@@ -26,36 +26,18 @@
 
 package io.github.mmagicala.gnomeRestaurant;
 
-import java.util.ArrayList;
 import lombok.Getter;
+import lombok.Setter;
 
-public class StageNode
+public class OverlayTableFraction
 {
-	@Getter
-	private final MinigameStage stage;
-	@Getter
-	private final int producedItemId;
-	@Getter
-	private final ArrayList<CookingItem> otherRequiredItems;
+	private int inventoryCount;
 
-	// First node, no produced item before it
+	private int requiredCount;
 
-	public StageNode(MinigameStage stage, ArrayList<CookingItem> otherRequiredItems)
+	public OverlayTableFraction(int inventoryCount, int requiredCount)
 	{
-		this(stage, otherRequiredItems, -1);
-	}
-
-	// No extra items required for this stage
-
-	public StageNode(MinigameStage stage, int producedItemId)
-	{
-		this(stage, new ArrayList<>(), producedItemId);
-	}
-
-	public StageNode(MinigameStage stage, ArrayList<CookingItem> otherRequiredItems, int producedItemId)
-	{
-		this.stage = stage;
-		this.otherRequiredItems = otherRequiredItems;
-		this.producedItemId = producedItemId;
+		this.inventoryCount = inventoryCount;
+		this.requiredCount = requiredCount;
 	}
 }

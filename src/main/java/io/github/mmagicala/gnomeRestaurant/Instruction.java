@@ -26,19 +26,23 @@
 
 package io.github.mmagicala.gnomeRestaurant;
 
-public enum MinigameStage
+public enum Instruction
 {
-	CREATE_MOULD("Create the mould"),
-	BAKE_MOULD("Bake the mould"),
-	COMBINE_INGREDIENTS("Apply 1st ingredients"),
+	CREATE_RAW("Create the raw batter"),
+	CREATE_HALF_BAKED("Bake the raw batter"),
+	COMBINE_INGREDIENTS("Apply ingredients"),
+	CREATE_UNFINISHED("Bake item again"),
+	ADD_TOPPINGS("Add topping ingredients"),
+
+	MIX_COCKTAIL("Mix ingredients in cocktail shaker"),
 	POUR("Pour into cocktail glass"),
-	TOP_WITH_INGREDIENTS("Apply 2nd ingredients"),
-	HEAT_AGAIN("Heat item again"),
+	HEAT_COCKTAIL("Heat cocktail"),
+
 	DELIVER("Deliver item");
 
 	String directions;
 
-	MinigameStage(String directions)
+	Instruction(String directions)
 	{
 		this.directions = directions;
 	}

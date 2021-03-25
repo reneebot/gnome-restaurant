@@ -24,21 +24,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package io.github.mmagicala.gnomeRestaurant.itemOrder;
+package io.github.mmagicala.gnomeRestaurant;
 
-import io.github.mmagicala.gnomeRestaurant.CookingItem;
-import io.github.mmagicala.gnomeRestaurant.ItemOrderType;
-import java.util.ArrayList;
 import lombok.Getter;
 
-public class BakedOrder extends ItemOrder
+public class Ingredient
 {
 	@Getter
-	private int halfMadeId;
+	private int itemId;
 
-	public BakedOrder(ItemOrderType itemOrderType, int halfMadeId, int itemId, ArrayList<CookingItem> cookingItems)
-	{
-		super(itemOrderType, itemId, cookingItems);
-		this.halfMadeId = halfMadeId;
+	@Getter
+	private int count;
+	private boolean isIntermediate;
+
+	public Ingredient(int itemId, int count){
+		this(itemId, count, false);
+	}
+
+	public Ingredient(int itemId, int count, boolean isIntermediate){
+		this.itemId = itemId;
+		this.count = count;
+		this.isIntermediate = isIntermediate;
 	}
 }

@@ -27,23 +27,16 @@
 package io.github.mmagicala.gnomeRestaurant;
 
 import com.google.inject.Provides;
-import io.github.mmagicala.gnomeRestaurant.itemOrder.BakedOrder;
-import io.github.mmagicala.gnomeRestaurant.itemOrder.BakedToppedOrder;
-import io.github.mmagicala.gnomeRestaurant.itemOrder.HeatedCocktailOrder;
-import io.github.mmagicala.gnomeRestaurant.itemOrder.CocktailOrder;
-import io.github.mmagicala.gnomeRestaurant.itemOrder.ItemOrder;
+import io.github.mmagicala.gnomeRestaurant.data.OrderRecipients;
+import io.github.mmagicala.gnomeRestaurant.data.Recipes;
 import java.security.InvalidParameterException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Named;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -79,67 +72,13 @@ import net.runelite.client.ui.overlay.infobox.Timer;
 )
 public class GnomeRestaurantPlugin extends Plugin
 {
+	// Gianne jr. dialogue
 	private static final Pattern DELIVERY_START_PATTERN = Pattern.compile("([\\w .]+) wants (?:some|a) ([\\w ]+)");
-
 	private static final String EASY_DELIVERY_CANCEL_TEXT = "Fine, your loss. If you want another easy job one come " +
 		"back in five minutes and maybe I'll be able to find you one.";
 	private static final String HARD_DELIVERY_CANCEL_TEXT = "Fine, your loss. I may have an easier job for you, since" +
 		" you chickened out of that one, If you want another hard one come back in five minutes and maybe I'll be" +
 		" able to find you a something.";
-
-	// NPC names used by Gianne jnr
-	// Mapped to in-game names
-	private static final HashMap<String, String> easyOrderNPCs = new HashMap<String, String>()
-	{
-		{
-			put("Burkor", null);
-			put("Brimstail", null);
-			put("Captain Errdo", null);
-			put("Coach", "Gnome Coach");
-			put("Dalila", null);
-			put("Damwin", null);
-			put("Eebel", null);
-			put("Ermin", null);
-			put("Femi", null);
-			put("Froono", null);
-			put("Guard Vemmeldo", null);
-			put("Gulluck", null);
-			put("His Royal Highness King Narnode", "King Narnode Shareen");
-			put("Meegle", null);
-			put("Perrdur", null);
-			put("Rometti", null);
-			put("Sarble", null);
-			put("Trainer Nacklepen", null);
-			put("Wurbel", null);
-			put("Heckel Funch", null);
-		}
-	};
-
-	private static final HashMap<String, String> hardOrderNPCs = new HashMap<String, String>()
-	{
-		{
-			put("Ambassador Ferrnook", null);
-			put("Ambassador Gimblewap", null);
-			put("Ambassador Spanfipple", null);
-			put("Brambickle", null);
-			put("Captain Bleemadge", null);
-			put("Captain Daerkin", null);
-			put("Captain Dalbur", null);
-			put("Captain Klemfoodle", null);
-			put("Captain Ninto", null);
-			put("G.L.O Caranock", null);
-			put("Garkor", null);
-			put("Gnormadium Avlafrim", null);
-			put("Hazelmere", null);
-			put("King Bolren", null);
-			put("Lieutenant Schepbur", null);
-			put("Penwie", null);
-			put("Professor Imblewyn", null);
-			put("Professor Manglethorp", null);
-			put("Professor Onglewip", null);
-			put("Wingstone", null);
-		}
-	};
 
 	@Inject
 	private Client client;
@@ -161,38 +100,31 @@ public class GnomeRestaurantPlugin extends Plugin
 
 	// UI
 
-	private Timer orderTimer, delayTimer;
+	private Timer timer;
 	private Overlay overlay;
 
-	// Order status
+	// Flags
 
 	@Inject
 	@Named("developerMode")
 	boolean developerMode;
+
 	private boolean isDeliveryForTesting = false;
-	private boolean isTrackingDelivery = false;
-	
-	// Order information
+	private boolean isTrackingOrder = false;
+	private boolean isDelayed = false;
 
-	private ItemOrder itemOrder;
-	private String recipientRealName;
+	// Current order information
 
-	// Stage nodes
+	private ArrayList<RecipeStep> recipe;
+	private OrderRecipient orderRecipient;
 
-	private final ArrayList<StageNode> stageNodes = new ArrayList<>();
+	private int stepNum;
 
-	@Getter
-	private int currentStageNodeIndex;
+	// Overlay tables hold the ingredients for the recipe
+	// We only display the remaining ingredients left
 
-	public String getCurrentStageDirections()
-	{
-		return stageNodes.get(currentStageNodeIndex).getStage().directions;
-	}
-
-	// Overlay tables
-
-	private final Hashtable<Integer, OverlayEntry> currentItemsOverlayTable = new Hashtable<>();
-	private final Hashtable<Integer, OverlayEntry> futureItemsOverlayTable = new Hashtable<>();
+	private final Hashtable<Integer, OverlayTableFraction> stepIngredientsOverlayTable = new Hashtable<>();
+	private final Hashtable<Integer, OverlayTableFraction> futureRawIngredientsOverlayTable = new Hashtable<>();
 
 	// Overlay strings
 
@@ -201,121 +133,118 @@ public class GnomeRestaurantPlugin extends Plugin
 	@Override
 	protected void shutDown() throws Exception
 	{
-		reset();
+		resetPlugin();
 	}
 
-	private void reset()
+	private void resetPlugin()
 	{
-		removeOrderTimer();
-		removeDelayTimer();
+		removeTimer();
 		removeOverlay();
 		client.clearHintArrow();
-
-		isTrackingDelivery = false;
 	}
 
+	// Monitor dialogue for Gianne jnr's new order
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		boolean isDialogueOpen = client.getWidget(WidgetInfo.DIALOG_NPC_NAME) != null;
 		if (!isDialogueOpen)
+		{
 			return;
+		}
 
 		boolean isTalkingToGianneJnr = client.getWidget(WidgetInfo.DIALOG_NPC_NAME).getText().equals("Gianne jnr.");
 		if (!isTalkingToGianneJnr)
+		{
 			return;
+		}
+
+		assert(client.getWidget(WidgetInfo.DIALOG_NPC_TEXT) != null);
 
 		String dialog = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT).getText();
-
+		// Treat dialogue as a single line
 		dialog = dialog.replace("<br>", " ");
 		Matcher matcher = DELIVERY_START_PATTERN.matcher(dialog);
 
-		// TODO: use different flag?
-		if (matcher.find() && !isTrackingDelivery)
+		if (matcher.find() && !isTrackingOrder)
 		{
-			startTrackingDelivery(matcher.group(1), matcher.group(2));
+			// Configure plugin
+			parseOrder(matcher.group(1), matcher.group(2));
+			stepNum = 0;
+
+			setupUI();
+
+			// Set flag
+			isTrackingOrder = true;
 		}
 
+		boolean playerCancelledOrder = dialog.contains(EASY_DELIVERY_CANCEL_TEXT) ||
+			dialog.contains(HARD_DELIVERY_CANCEL_TEXT);
+		if (config.showDelayTimer() && !isDelayed && playerCancelledOrder)
+		{
+			// Show delay timer if player refuses the order
+			addDelayTimer();
+			isDelayed = true;
+		}
+
+		/*
 		if (isDeliveryForTesting)
 		{
 			resetPluginAndTest("Starting real delivery");
 		}
-
-		// Show delay timer if player refuses the order
-
-		// TODO: refactor?
-		if (config.showDelayTimer() && delayTimer == null && (dialog.contains(EASY_DELIVERY_CANCEL_TEXT) || dialog.contains(HARD_DELIVERY_CANCEL_TEXT)))
-		{
-			addDelayTimer();
-		}
+		*/
 	}
 
 	private void addDelayTimer()
 	{
-		delayTimer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
-		delayTimer.setTooltip("Cannot place an order at this time");
-		infoBoxManager.addInfoBox(delayTimer);
+		timer = new Timer(5, ChronoUnit.MINUTES, itemManager.getImage(ItemID.ALUFT_ALOFT_BOX), this);
+		timer.setTooltip("Cannot place an order at this time");
+		infoBoxManager.addInfoBox(timer);
 	}
 
-	private void startTrackingDelivery(String printedRecipientName, String orderName)
+	private void parseOrder(String addressedName, String recipeName)
 	{
-		// Players can change their order upon earning a full reward token
+		resetPlugin();
 
-		reset();
+		recipe = Recipes.list.get(recipeName);
 
-		itemOrder = ItemDatabase.orders.get(orderName);
-
-		if (itemOrder == null)
+		if (recipe == null)
 		{
-			throw new InvalidParameterException("No order found with the name " + orderName);
+			throw new InvalidParameterException("No order found with the name " + recipeName);
 		}
 
-		boolean isHardOrder;
-
-		if (easyOrderNPCs.containsKey(printedRecipientName))
+		// Get in-game names
+		for (OrderRecipient npc: OrderRecipients.list)
 		{
-			recipientRealName = easyOrderNPCs.get(printedRecipientName) == null ? printedRecipientName : easyOrderNPCs.get(printedRecipientName);
-			isHardOrder = false;
-		}
-		else if (hardOrderNPCs.containsKey(printedRecipientName))
-		{
-			recipientRealName = hardOrderNPCs.get(printedRecipientName) == null ? printedRecipientName : hardOrderNPCs.get(printedRecipientName);
-			isHardOrder = true;
-		}
-		else
-		{
-			throw new InvalidParameterException("No recipient found with the name " + printedRecipientName);
+			if (npc.addressedName == addressedName)
+			{
+				orderRecipient = npc;
+			}
 		}
 
-		isTrackingDelivery = true;
+		if (orderRecipient == null)
+		{
+			throw new InvalidParameterException("No recipient found with the name " + addressedName);
+		}
+	}
 
-		// Delete the delay timer if it is active (we can choose hard orders during a delay)
-
-		removeDelayTimer();
-
+	private void setupUI()
+	{
 		if (config.showOverlay())
 		{
-			// Build stage list
+			buildOverlayTables();
 
-			rebuildStageNodeList();
-			currentStageNodeIndex = 0;
-
-			// Determine initial stage, initialize overlay, and create overlay tables
-
-			ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
-			assert inventory != null;
-
-			overlay = new GnomeRestaurantOverlay(this, currentItemsOverlayTable, futureItemsOverlayTable);
+			// Display overlay tables
+			overlay = new GnomeRestaurantOverlay(this, stepIngredientsOverlayTable,
+				futureRawIngredientsOverlayTable);
 			overlayManager.add(overlay);
-
-			updateStage(inventory, true);
 		}
 
 		if (config.showOrderTimer())
 		{
 			int numSecondsLeft;
 
-			if (isHardOrder)
+			if (orderRecipient.difficulty == OrderDifficulty.HARD)
 			{
 				numSecondsLeft = 660;
 			}
@@ -324,11 +253,11 @@ public class GnomeRestaurantPlugin extends Plugin
 				numSecondsLeft = 360;
 			}
 
-			orderTimer = new Timer(numSecondsLeft, ChronoUnit.SECONDS, itemManager.getImage(itemOrder.getItemId()), this);
-
+			timer = new Timer(numSecondsLeft, ChronoUnit.SECONDS, itemManager.getImage(Recipes.getFinalProduct(recipe)),
+				this);
 			String tooltipText = "Deliver " + orderName + " to " + recipientRealName;
-			orderTimer.setTooltip(tooltipText);
-			infoBoxManager.addInfoBox(orderTimer);
+			timer.setTooltip(tooltipText);
+			infoBoxManager.addInfoBox(timer);
 		}
 
 		// Draw hint arrow if we can already identify the NPC
@@ -377,7 +306,7 @@ public class GnomeRestaurantPlugin extends Plugin
 	@Subscribe
 	public void onNpcSpawned(final NpcSpawned event)
 	{
-		if (isTrackingDelivery && config.showHintArrow())
+		if (isTrackingOrder && config.showHintArrow())
 		{
 			toggleMarkRecipient(event.getNpc(), true);
 		}
@@ -386,81 +315,10 @@ public class GnomeRestaurantPlugin extends Plugin
 	@Subscribe
 	public void onNpcDespawned(final NpcDespawned event)
 	{
-		if (isTrackingDelivery && config.showHintArrow())
+		if (isTrackingOrder && config.showHintArrow())
 		{
 			toggleMarkRecipient(event.getNpc(), false);
 		}
-	}
-
-	// Build a linear graph that links stages together, and define the items required to move to the next stage
-
-	private void rebuildStageNodeList()
-	{
-		stageNodes.clear();
-
-		// Ingredients
-
-		ArrayList<CookingItem> initialIngredients = itemOrder.getIngredients(false);
-		ArrayList<CookingItem> laterIngredients = itemOrder.getIngredients(true);
-
-		if (itemOrder.getItemOrderType() == ItemOrderType.COCKTAIL)
-		{
-			// Starting items
-
-			ArrayList<CookingItem> startingItems = new ArrayList<>(initialIngredients);
-			startingItems.add(new CookingItem(ItemID.COCKTAIL_SHAKER, 1));
-			stageNodes.add(new StageNode(MinigameStage.COMBINE_INGREDIENTS, startingItems));
-
-			ArrayList<CookingItem> requiredItemsToPour = new ArrayList<CookingItem>();
-
-
-			requiredItemsToPour.add(new CookingItem(ItemID.COCKTAIL_GLASS, 1));
-
-
-			if (itemOrder instanceof HeatedCocktailOrder)
-			{
-				stageNodes.add(new StageNode(MinigameStage.POUR, requiredItemsToPour, ((HeatedCocktailOrder) itemOrder).getShakerMixId()));
-
-				if (((HeatedCocktailOrder) itemOrder).getHeatTiming() == HeatTiming.BEFORE_ADDING_INGREDS)
-				{
-					stageNodes.add(new StageNode(MinigameStage.HEAT_AGAIN, ((HeatedCocktailOrder) itemOrder).getPouredMixId()));
-					stageNodes.add(new StageNode(MinigameStage.TOP_WITH_INGREDIENTS, laterIngredients, ((HeatedCocktailOrder) itemOrder).getSecondPouredMixId()));
-				}
-				else
-				{
-					stageNodes.add(new StageNode(MinigameStage.TOP_WITH_INGREDIENTS, laterIngredients, ((HeatedCocktailOrder) itemOrder).getPouredMixId()));
-					stageNodes.add(new StageNode(MinigameStage.HEAT_AGAIN, ((HeatedCocktailOrder) itemOrder).getSecondPouredMixId()));
-				}
-			}
-			else
-			{
-				requiredItemsToPour.addAll(laterIngredients);
-				stageNodes.add(new StageNode(MinigameStage.POUR, requiredItemsToPour, ((CocktailOrder) itemOrder).getShakerMixId()));
-			}
-		}
-		else
-		{
-			ArrayList<CookingItem> startingItems = new ArrayList<>();
-			startingItems.add(new CookingItem(ItemID.GIANNE_DOUGH, 1));
-			startingItems.add(new CookingItem(itemOrder.getItemOrderType().getToolId(), 1));
-
-			stageNodes.add(new StageNode(MinigameStage.CREATE_MOULD, startingItems));
-			stageNodes.add(new StageNode(MinigameStage.BAKE_MOULD, itemOrder.getItemOrderType().getMouldId()));
-			stageNodes.add(new StageNode(MinigameStage.COMBINE_INGREDIENTS, initialIngredients, itemOrder.getItemOrderType().getHalfBakedId()));
-
-			stageNodes.add(new StageNode(MinigameStage.HEAT_AGAIN, ((BakedOrder) itemOrder).getHalfMadeId()));
-
-			if (itemOrder instanceof BakedToppedOrder)
-			{
-				stageNodes.add(new StageNode(MinigameStage.TOP_WITH_INGREDIENTS, laterIngredients, ((BakedToppedOrder) itemOrder).getUnfinishedId()));
-			}
-		}
-		stageNodes.add(new StageNode(MinigameStage.DELIVER, new ArrayList<CookingItem>()
-		{
-			{
-				add(new CookingItem(ItemID.ALUFT_ALOFT_BOX, 1));
-			}
-		}, itemOrder.getItemId()));
 	}
 
 	@Subscribe
@@ -468,9 +326,9 @@ public class GnomeRestaurantPlugin extends Plugin
 	{
 		// Ignore varbit changes while we are testing, since it will stay 0
 
-		if (isTrackingDelivery && !isDeliveryForTesting && client.getVarbitValue(2478) == 0)
+		if (isTrackingOrder && !isDeliveryForTesting && client.getVarbitValue(2478) == 0)
 		{
-			reset();
+			resetPlugin();
 		}
 	}
 
@@ -484,60 +342,32 @@ public class GnomeRestaurantPlugin extends Plugin
 				return;
 			}
 
-			updateStage(event.getItemContainer(), false);
+			buildOverlayTables();
 		}
 	}
 
-	/**
-	 * Update stage according to inventory and update / rebuild overlay tables
-	 * @param forceRebuildOverlayTables Set this to true when we need to build an overlay table upon receiving a delivery
-	 */
-	private void updateStage(ItemContainer inventory, boolean forceRebuildOverlayTables)
+	private void buildOverlayTables()
 	{
-		int traversedStageNodeIndex = stageNodes.size() - 1;
+		ArrayList<Ingredient> stepIngredients = recipe.get(stepNum).getIngredients();
+		buildOverlayTable(stepIngredients, stepIngredientsOverlayTable);
 
-		while (traversedStageNodeIndex > currentStageNodeIndex)
+		ArrayList<Ingredient> futureRawIngredients = Recipes.getFutureRawIngredients(recipe, stepNum);
+		buildOverlayTable(futureRawIngredients, futureRawIngredientsOverlayTable);
+	}
+
+	private void buildOverlayTable(ArrayList<Ingredient> ingredients,
+								   Hashtable<Integer, OverlayTableFraction> overlayTable)
+	{
+		ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
+		assert(inventory != null);
+
+		for (Ingredient ingredient: ingredients)
 		{
-			if (inventory.contains(stageNodes.get(traversedStageNodeIndex).getProducedItemId()))
-			{
-				currentStageNodeIndex = traversedStageNodeIndex;
+			int itemId = ingredient.getItemId();
+			int inventoryCount = inventory.count(itemId);
+			int expectedCount = ingredient.getCount();
 
-				// Rebuild overlay tables after updating the stage
-
-				rebuildOverlayTables(inventory);
-
-				return;
-			}
-			traversedStageNodeIndex--;
-		}
-
-		ArrayList<Hashtable<Integer, OverlayEntry>> overlayTables = new ArrayList<Hashtable<Integer, OverlayEntry>>()
-		{
-			{
-				add(currentItemsOverlayTable);
-				add(futureItemsOverlayTable);
-			}
-		};
-
-		if (forceRebuildOverlayTables)
-		{
-			rebuildOverlayTables(inventory);
-		}
-		else
-		{
-			// Simply update inventory counts for overlay tables if the stage has not changed
-
-			for (Hashtable<Integer, OverlayEntry> overlayTable : overlayTables)
-			{
-				for (Map.Entry<Integer, OverlayEntry> entry : overlayTable.entrySet())
-				{
-					int realInventoryCount = inventory.count(entry.getKey());
-					if (entry.getValue().getInventoryCount() != realInventoryCount)
-					{
-						entry.getValue().setInventoryCount(realInventoryCount);
-					}
-				}
-			}
+			overlayTable.put(itemId, new OverlayTableFraction(inventoryCount, expectedCount));
 		}
 	}
 
@@ -556,44 +386,7 @@ public class GnomeRestaurantPlugin extends Plugin
 
 			ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
 			assert inventory != null;
-			updateStage(inventory, true);
-		}
-	}
-
-	/**
-	 * Add overlay entries to an overlay table
-	 */
-	private void addItemsToOverlayTable(Hashtable<Integer, OverlayEntry> overlayTable, ItemContainer inventory, ArrayList<CookingItem> itemStacks)
-	{
-		for (CookingItem itemStack : itemStacks)
-		{
-			String itemName = itemManager.getItemComposition(itemStack.getItemId()).getName();
-			overlayTable.put(itemStack.getItemId(), new OverlayEntry(itemName, inventory.count(itemStack.getItemId()), itemStack.getCount()));
-		}
-	}
-
-	private void rebuildOverlayTables(ItemContainer inventory)
-	{
-		futureItemsOverlayTable.clear();
-		currentItemsOverlayTable.clear();
-
-		for (int i = stageNodes.size() - 1; i >= currentStageNodeIndex; i--)
-		{
-			Hashtable<Integer, OverlayEntry> overlayTable;
-			ArrayList<CookingItem> requiredItems = new ArrayList<>(stageNodes.get(i).getOtherRequiredItems());
-			if (i == currentStageNodeIndex)
-			{
-				overlayTable = currentItemsOverlayTable;
-				if (i > 0)
-				{
-					requiredItems.add(new CookingItem(stageNodes.get(i).getProducedItemId(), 1));
-				}
-			}
-			else
-			{
-				overlayTable = futureItemsOverlayTable;
-			}
-			addItemsToOverlayTable(overlayTable, inventory, requiredItems);
+			buildOverlayTables(inventory, true);
 		}
 	}
 
@@ -610,10 +403,10 @@ public class GnomeRestaurantPlugin extends Plugin
 	{
 		if (!config.showDelayTimer())
 		{
-			removeDelayTimer();
+			removeTimer();
 		}
 
-		if (!config.showOrderTimer())
+		if (!)
 		{
 			removeOrderTimer();
 		}
@@ -627,7 +420,7 @@ public class GnomeRestaurantPlugin extends Plugin
 		{
 			client.clearHintArrow();
 		}
-		else if (isTrackingDelivery)
+		else if (isTrackingOrder)
 		{
 			// Re-enable hint arrow
 
@@ -637,16 +430,10 @@ public class GnomeRestaurantPlugin extends Plugin
 
 	// UI cleaning
 
-	private void removeOrderTimer()
+	private void removeTimer()
 	{
-		infoBoxManager.removeInfoBox(orderTimer);
-		orderTimer = null;
-	}
-
-	private void removeDelayTimer()
-	{
-		infoBoxManager.removeInfoBox(delayTimer);
-		delayTimer = null;
+		infoBoxManager.removeInfoBox(timer);
+		timer = null;
 	}
 
 	private void removeOverlay()
@@ -672,7 +459,7 @@ public class GnomeRestaurantPlugin extends Plugin
 			resetPluginAndTest("Reset command called.");
 			return;
 		}
-		else if (isTrackingDelivery && !isDeliveryForTesting)
+		else if (isTrackingOrder && !isDeliveryForTesting)
 		{
 			printTestMessage("Cannot run test when a real order is in progress");
 			return;
@@ -697,7 +484,7 @@ public class GnomeRestaurantPlugin extends Plugin
 		try
 		{
 			isDeliveryForTesting = true;
-			startTrackingDelivery(recipientName, orderName);
+			parseOrder(recipientName, orderName);
 		}
 		catch (InvalidParameterException e)
 		{
@@ -710,7 +497,7 @@ public class GnomeRestaurantPlugin extends Plugin
 	 */
 	private void resetPluginAndTest(String errorMessage)
 	{
-		reset();
+		resetPlugin();
 		isDeliveryForTesting = false;
 		printTestMessage("Test cancelled. Reason: " + errorMessage);
 	}

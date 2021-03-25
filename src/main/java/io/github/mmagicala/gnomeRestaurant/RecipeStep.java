@@ -26,22 +26,40 @@
 
 package io.github.mmagicala.gnomeRestaurant;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import lombok.Getter;
-import net.runelite.api.ItemID;
 
-public enum ItemOrderType
+public class RecipeStep
 {
-	COCKTAIL(-1, -1, ItemID.COCKTAIL_SHAKER),
-	CRUNCHIES(ItemID.RAW_CRUNCHIES, ItemID.HALF_BAKED_CRUNCHY, ItemID.CRUNCHY_TRAY),
-	BATTA(ItemID.RAW_BATTA, ItemID.HALF_BAKED_BATTA, ItemID.BATTA_TIN),
-	GNOMEBOWL(ItemID.RAW_GNOMEBOWL, ItemID.HALF_BAKED_BOWL, ItemID.GNOMEBOWL_MOULD);
+	private final Instruction instruction;
 
 	@Getter
-	private int mouldId, halfBakedId, toolId;
+	private final ArrayList<Ingredient> ingredients;
 
-	ItemOrderType(int mouldId, int halfBakedId, int toolId){
-		this.mouldId = mouldId;
-		this.halfBakedId = halfBakedId;
-		this.toolId = toolId;
+	@Getter
+	private final int producedItemId;
+
+	public RecipeStep(Instruction instruction, ArrayList<Ingredient> ingredients, int producedItemId)
+	{
+		this.instruction = instruction;
+		this.ingredients = ingredients;
+		this.producedItemId = producedItemId;
+	}
+
+	// Step only requires one ingredient
+	public RecipeStep(Instruction instruction, Ingredient ingredient, int producedItemId)
+	{
+		this(instruction, new ArrayList<>(), producedItemId);
+		this.ingredients.add(ingredient);
+	}
+
+	public ArrayList<Ingredient> getRawIngredients()
+	{
+		ArrayList<Ingredient> rawIngredients = new ArrayList<>();
+		Collections.copy(rawIngredients, ingredients);
+		rawIngredients.removeIf(ingredient -> ingredient.isIntermediate);
+
+		return rawIngredients;
 	}
 }

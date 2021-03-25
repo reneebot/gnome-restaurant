@@ -24,29 +24,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package io.github.mmagicala.gnomeRestaurant.itemOrder;
+package io.github.mmagicala.gnomeRestaurant;
 
-import io.github.mmagicala.gnomeRestaurant.CookingItem;
-import io.github.mmagicala.gnomeRestaurant.HeatTiming;
-import io.github.mmagicala.gnomeRestaurant.MinigameStage;
-import java.util.ArrayList;
 import lombok.Getter;
+import net.runelite.api.ItemID;
 
-// HBP: Heat before pouring
-public class HeatedCocktailOrder extends CocktailOrder
+public enum BakedRecipeType
 {
-	@Getter
-	private HeatTiming heatTiming;
+	CRUNCHIES(ItemID.RAW_CRUNCHIES, ItemID.CRUNCHY_TRAY, ItemID.HALF_BAKED_CRUNCHY),
+	BATTA(ItemID.RAW_BATTA, ItemID.CRUNCHY_TRAY, ItemID.HALF_BAKED_BATTA),
+	GNOMEBOWL(ItemID.RAW_GNOMEBOWL, ItemID.GNOMEBOWL_MOULD, ItemID.HALF_BAKED_BOWL);
 
 	@Getter
-	private int pouredMixId, secondPouredMixId;
+	private int rawId, toolId, halfBakedId;
 
-	public HeatedCocktailOrder(HeatTiming heatTiming, int shakerMixId, int pouredMixId, int secondPouredMixId, int itemId, ArrayList<CookingItem> ingredients)
-	{
-		super(shakerMixId, itemId, ingredients);
-
-		this.heatTiming = heatTiming;
-		this.pouredMixId = pouredMixId;
-		this.secondPouredMixId = secondPouredMixId;
+	BakedRecipeType(int rawId, int toolId, int halfBakedId){
+		this.rawId = rawId;
+		this.halfBakedId = halfBakedId;
+		this.toolId = toolId;
 	}
 }

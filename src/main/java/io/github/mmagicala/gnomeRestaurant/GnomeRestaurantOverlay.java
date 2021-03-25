@@ -43,16 +43,17 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 
 public class GnomeRestaurantOverlay extends OverlayPanel
 {
-	private final Hashtable<Integer, OverlayEntry> currentStageOverlayTable, futureItemsOverlayTable;
-	private final GnomeRestaurantPlugin plugin;
+	private final Hashtable<Integer, OverlayTableFraction> currentStageOverlayTable, futureItemsOverlayTable;
+	// private final GnomeRestaurantPlugin plugin;
 
 	@Inject
-	protected GnomeRestaurantOverlay(GnomeRestaurantPlugin plugin, Hashtable<Integer, OverlayEntry> currentStageOverlayTable,
-									 Hashtable<Integer, OverlayEntry> futureItemsOverlayTable)
+	protected GnomeRestaurantOverlay(GnomeRestaurantPlugin plugin,
+									 Hashtable<Integer, OverlayTableFraction> stepIngredientsOverlayTable,
+									 Hashtable<Integer, OverlayTableFraction> futureRawIngredientsOverlayTable)
 	{
 		super(plugin);
-		this.plugin = plugin;
-		this.currentStageOverlayTable = currentStageOverlayTable;
+
+		this.currentStageOverlayTable = currentStepOverlayTable;
 		this.futureItemsOverlayTable = futureItemsOverlayTable;
 		panelComponent.setBorder(new Rectangle());
 		panelComponent.setGap(new Point(0, ComponentConstants.STANDARD_BORDER / 2));
@@ -80,12 +81,12 @@ public class GnomeRestaurantOverlay extends OverlayPanel
 		return super.render(graphics);
 	}
 
-	private void renderOverlayTable(Hashtable<Integer, OverlayEntry> overlayTable, String title)
+	private void renderOverlayTable(Hashtable<Integer, OverlayTableFraction> overlayTable, String title)
 	{
 		TitleComponent titleComponent = TitleComponent.builder().text(title).build();
 		panelComponent.getChildren().add(titleComponent);
 
-		for (Map.Entry<Integer, OverlayEntry> ingredient : overlayTable.entrySet())
+		for (Map.Entry<Integer, OverlayTableFraction> ingredient : overlayTable.entrySet())
 		{
 			Color ingredientColor;
 			if (ingredient.getValue().getInventoryCount() >= ingredient.getValue().getRequiredCount())

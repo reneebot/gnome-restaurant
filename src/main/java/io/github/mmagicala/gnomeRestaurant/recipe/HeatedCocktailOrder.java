@@ -24,34 +24,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package io.github.mmagicala.gnomeRestaurant.itemOrder;
+package io.github.mmagicala.gnomeRestaurant.recipe;
 
-import io.github.mmagicala.gnomeRestaurant.CookingItem;
-import io.github.mmagicala.gnomeRestaurant.ItemOrderType;
+import io.github.mmagicala.gnomeRestaurant.Ingredient;
+import io.github.mmagicala.gnomeRestaurant.HeatTiming;
 import java.util.ArrayList;
-import java.util.Collections;
 import lombok.Getter;
 
-public abstract class ItemOrder
+// HBP: Heat before pouring
+public class HeatedCocktailOrder extends CocktailOrder
 {
 	@Getter
-	private final int itemId;
-
-	private final ArrayList<CookingItem> ingredients;
+	private HeatTiming heatTiming;
 
 	@Getter
-	private final ItemOrderType itemOrderType;
+	private int pouredMixId, secondPouredMixId;
 
-	public ItemOrder(ItemOrderType itemOrderType, int itemId, ArrayList<CookingItem> ingredients)
+	public HeatedCocktailOrder(HeatTiming heatTiming, int shakerMixId, int pouredMixId, int secondPouredMixId, int itemId, ArrayList<Ingredient> ingredients)
 	{
-		this.itemOrderType = itemOrderType;
-		this.itemId = itemId;
-		this.ingredients = ingredients;
-	}
+		super(shakerMixId, itemId, ingredients);
 
-	public ArrayList<CookingItem> getIngredients(boolean usedLater){
-		ArrayList<CookingItem> filteredIngredients = new ArrayList<>(ingredients);
-		filteredIngredients.removeIf(ingredient -> ingredient.isUsedLater() != usedLater);
-		return filteredIngredients;
+		this.heatTiming = heatTiming;
+		this.pouredMixId = pouredMixId;
+		this.secondPouredMixId = secondPouredMixId;
 	}
 }
